@@ -1,21 +1,31 @@
 package fpinscala.exercises.errorhandling
 
 // Hide std library `Option` since we are writing our own in this chapter
-import scala.{Option as _, Some as _, None as _}
+import fpinscala.answers.errorhandling.Option.{Some, map2, traverse}
+
+import scala.{None as _, Option as _, Some as _}
 
 enum Option[+A]:
   case Some(get: A)
   case None
 
-  def map[B](f: A => B): Option[B] = ???
+  def map[B](f: A => B): Option[B] = this match
+    case None => None
+    case Some(a) => Some(f(a))
 
-  def getOrElse[B>:A](default: => B): B = ???
+  def getOrElse[B>:A](default: => B): B = this match
+    case None => default
+    case Some(a) => a
 
-  def flatMap[B](f: A => Option[B]): Option[B] = ???
+  def flatMap[B](f: A => Option[B]): Option[B] =
+    map(f).getOrElse(None)
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] = ???
+  def orElse[B>:A](ob: => Option[B]): Option[B] =
+    map(Some(_)).getOrElse(ob)
 
-  def filter(f: A => Boolean): Option[A] = ???
+  def filter(f: A => Boolean): Option[A] = this match
+    case Some(a) if f(a) => this
+    case _ => None
 
 object Option:
 
@@ -36,10 +46,21 @@ object Option:
     if xs.isEmpty then None
     else Some(xs.sum / xs.length)
 
-  def variance(xs: Seq[Double]): Option[Double] = ???
+  def variance(xs: Seq[Double]): Option[Double] =
+    mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
 
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = ???
+  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = (a,b) match
+    case (None, _) => None
+    case (_, None) => None
+    case (Some(aVal), Some(bVal)) => Some(f(aVal, bVal))
 
-  def sequence[A](as: List[Option[A]]): Option[List[A]] = ???
+  def sequence[A](as: List[Option[A]]): Option[List[A]] = as match
+    case Nil => Some(Nil)
+    case h :: t => h.flatMap(hh => sequence(t).map(hh :: _))
 
-  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = ???
+
+  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = 
+    as match
+      case Nil => Some(Nil)
+      case h::t => map2(f(h), traverse(t)(f))(_ :: _)
+
