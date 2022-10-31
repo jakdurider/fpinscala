@@ -1,10 +1,18 @@
 package fpinscala.exercises.laziness
 
+import scala.annotation.tailrec
+
 enum LazyList[+A]:
   case Empty
   case Cons(h: () => A, t: () => LazyList[A])
 
-  def toList: List[A] = ???
+  def toList: List[A] =
+    @tailrec
+    def go(ll: LazyList[A], acc: List[A]): List[A] = ll match
+        case Empty => acc
+        case Cons(h, t) => go(t(), h()::acc)
+    go(this, List[A]())
+
 
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
     this match
@@ -19,7 +27,13 @@ enum LazyList[+A]:
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
 
-  def take(n: Int): LazyList[A] = ???
+  def take(n: Int): LazyList[A] =
+    def go(ll: LazyList[A], acc: LazyList[A], num: Int): LazyList[A] = ll match
+      case Empty => acc
+      case Cons(h, t) if num < n => go(ll, Cons(h, ()=>acc), num + 1)
+      case Cons(h, t) if num >= n => acc
+    go(this, LazyList[A](), 0)
+
 
   def drop(n: Int): LazyList[A] = ???
 
