@@ -21,17 +21,29 @@ object Monoid {
     val zero = Nil
   }
 
-  val intAddition: Monoid[Int] = ???
+  val intAddition: Monoid[Int] = new Monoid[Int] {
+    def op(a1: Int, a2: Int) = a1 + a2
+    val zero = 0
+  }
 
-  val intMultiplication: Monoid[Int] = ???
+  val intMultiplication: Monoid[Int] = new Monoid[Int] {
+    def op(a1: Int, a2: Int) = a1 * a2
+    val zero = 1
+  }
 
   val booleanOr: Monoid[Boolean] = ???
 
   val booleanAnd: Monoid[Boolean] = ???
 
-  def optionMonoid[A]: Monoid[Option[A]] = ???
+  def optionMonoid[A]: Monoid[Option[A]] = new Monoid[Option[A]] {
+    def op(a1: Option[A], a2: Option[A]): Option[A] = a1 orElse a2
+    def zero: Option[A] = None
+  }
 
-  def endoMonoid[A]: Monoid[A => A] = ???
+  def endoMonoid[A]: Monoid[A => A] = new Monoid[A => A] {
+    def op(a1: A => A, a2: A => A): A => A = (aa => a1(a2(aa)))
+    def zero: A => A = (aa => aa)
+  }
 
   // TODO: Placeholder for `Prop`. Remove once you have implemented the `Prop`
   // data type from Part 2.
@@ -44,19 +56,25 @@ object Monoid {
   import Prop._
   def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop = ???
 
-  def trimMonoid(s: String): Monoid[String] = ???
+  def trimMonoid(s: String): Monoid[String] = new Monoid[String] {
+    def op(a1: String, a2: String): String = if (a2 != "") a1.trim() + " " + a2.trim() else a1.trim()
+    def zero: String = ""
+  }
 
-  def concatenate[A](as: List[A], m: Monoid[A]): A =
-    ???
+  def concatenate[A](as: List[A], m: Monoid[A]): A = as match {
+    case h::Nil => h
+    case h::t => m.op(h, concatenate(t, m))
+  }
 
   def foldMap[A, B](as: List[A], m: Monoid[B])(f: A => B): B =
-    ???
+    as.foldLeft(m.zero)((acc, a) => m.op(acc, f(a)))
 
-  def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B =
-    ???
+  def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B = {
+    foldMap(as, endoMonoid[B])(f.curried)(z)
+  }
 
   def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B =
-    ???
+    foldMap(as, endoMonoid[B])(a => b => f(b,a))(z)
 
   def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
     ???
@@ -74,7 +92,15 @@ object Monoid {
   def parFoldMap[A,B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = 
     ???
 
-  val wcMonoid: Monoid[WC] = ???
+  val wcMonoid: Monoid[WC] = new Monoid[WC] {
+    def op(a1: WC, a2: WC): WC = (a1, a2) match {
+      case (Stub(aa), Stub(bb)) => Stub(aa + bb)
+      case (Stub(aa), Part(l, words, r)) => Part(aa + l, words, r)
+      case (Part(l, words, r), Stub(bb)) => Part(l, words, r + bb)
+      case (Part(l1, w1, r1), Part(l2, w2, r2)) => Part(l1, w1+w2 + (if((r1+l2).isEmpty) 0 else 1), r2)
+    }
+    def zero: WC = Stub("")
+  }
 
   def count(s: String): Int = ???
 
